@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    body {
+      font-family: 'Lato', sans-serif;
+      background-color: #F8F8F8;
+    }
+
+    .main-container {
+      display: flex;
+      flex-wrap: wrap; /* Ensure elements wrap to the next line if there isn't enough space */
+    }
+
+    .left-component {
+      width: 352px; /* Set fixed width */
+      height: 288px; /* Set fixed height */
+      overflow: hidden; /* Hide any overflow */
+    }
+
+    .right-component {
+      flex: 1; /* Take remaining space */
+      margin-left: 20px; /* Add space between the stream and table */
+    }
+
+    .table-container {
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    h2 {
+      font-size: 26px;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    h3 {
+      font-size: 22px;
+      margin: 20px 0;
+      text-align: center;
+      color: #333;
+    }
+
+    .responsive-table {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    .responsive-table li {
+      border-radius: 3px;
+      padding: 15px 20px; /* Reduced padding */
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px; /* Reduced margin */
+    }
+
+    .table-header {
+      background-color: #95A5A6;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #fff;
+    }
+
+    .table-row {
+      background-color: #ffffff;
+      box-shadow: 0px 0px 9px 0px rgba(0, 0, 0, 0.1);
+      transition: background-color 0.3s;
+    }
+
+    .table-row .col-5 button {
+      padding: 8px 15px; /* Reduced button padding */
+      font-size: 12px; /* Reduced button font size */
+    }
+
+    .table-row .col-5 button:hover {
+      background-color: #2980b9;
+    }
+
+    .col-1, .col-2, .col-3, .col-4, .col-5 {
+      flex-basis: 20%;
+    }
+
+    .total-revenue {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 20px;
+      color: #333;
+    }
+
+    @media all and (max-width: 767px) {
+      .left-component, .right-component {
+        width: 100%; /* Adjust to full width for small screens */
+        max-width: none; /* Remove max-width restriction */
+        margin-left: 0; /* Remove left margin */
+      }
+    }
+
+
+    /* Style for Speak button */
+    #speakButton {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      font-size: 18px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #speakButton.speaking {
+      background-color: #e74c3c;
+    }
+
+
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+</head>
+<body>
+  <div class="main-container">
+    <div class="left-component">
+      <!-- Embedded video stream -->
+      <img id="stream" src="http://192.168.137.198/" width="352" height="288">
+    </div>
+    <div class="right-component">
+      <div class="table-container">
+        <div class="container right-side">
+          <h2>Order List</h2>
+          <ul class="responsive-table">
+            <li class="responsive-table table-header">
+              <div class="col col-1">Order No.</div>
+              <div class="col col-2">Table No.</div>
+              <div class="col col-3">Orders</div>
+              <div class="col col-4">Total Amount</div>
+              <div class="col col-5">Status</div>
+            </li>
+          </ul>
+          <ul class="responsive-table table-body" id="table-body">
+            <!-- Data will be dynamically inserted here -->
+          </ul>
+        </div>
+        <div class="total-revenue">
+          <h3>Total Revenue: ₱<span id="total-revenue">0.00</span></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button id="speakButton">Speak</button>
+
+  <script>
+    var firebaseConfig = {
+        apiKey: "AIzaSyCdr44vTmbcZlPhfbjaCarIWHWqwJuUS7w",
+        authDomain: "microprocessor-63026.firebaseapp.com",
+        databaseURL: "https://micropit-b5b3e-default-rtdb.asia-southeast1.firebasedatabase.app/",
+        projectId: "microprocessor-63026",
+        storageBucket: "microprocessor-63026.appspot.com",
+        messagingSenderId: "1234567890",
+        appId: "1:1234567890:web:abcdefghijk"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    
+    var database = firebase.database();
+    var totalRevenue = 0;
+
+    function updateTotalRevenue() {
+        document.getElementById('total-revenue').innerText = totalRevenue.toFixed(2);
+    }
+
+    function updateTable(data) {
+        var tableBody = document.getElementById('table-body');
+        tableBody.innerHTML = ''; // Clear existing table data
+
+        var orderNo = 1;
+
+        data.forEach(function(childSnapshot) {
+            var tableNo = childSnapshot.key;
+            var totalItems = childSnapshot.val().TotalItems;
+            var totalPrice = childSnapshot.val().TotalPrice;
+            var status = childSnapshot.val().Status || 'Pending';
+
+            var row = document.createElement('li');
+            row.className = 'table-row';
+            row.dataset.tableNo = tableNo;
+            row.dataset.status = status;
+            row.innerHTML = `
+                <div class="col col-1">${orderNo}</div>
+                <div class="col col-2">${tableNo}</div>
+                <div class="col col-3">${totalItems}</div>
+                <div class="col col-4">₱${totalPrice.toFixed(2)}</div>
+                <div class="col col-5">
+                    <button onclick="markServed('${tableNo}')">Served</button>
+                    <button onclick="markPaid('${tableNo}', this, ${totalPrice})">Paid</button>
+                </div>
+            `;
+
+            if (status === 'Served') {
+                row.style.backgroundColor = 'yellow';
+            } else if (status === 'Paid') {
+                row.style.backgroundColor = 'green';
+            }
+
+            tableBody.appendChild(row);
+            orderNo++;
+        });
+    }
+
+    function markServed(tableNo) {
+        var ref = database.ref(tableNo);
+        ref.update({ Status: 'Served' });
+    }
+
+    function markPaid(tableNo, buttonElement, totalPrice) {
+        var ref = database.ref(tableNo);
+        totalRevenue += totalPrice; 
+        updateTotalRevenue(); 
+       
+        var row = buttonElement.closest('li');
+        row.remove();
+        ref.remove();
+    }
+
+  
+    database.ref().on('value', function(snapshot) {
+        var data = [];
+        snapshot.forEach(function(childSnapshot) {
+            data.push(childSnapshot);
+        });
+        data.sort(function(a, b) {
+            return a.key.localeCompare(b.key);
+        });
+
+        updateTable(data);
+    });
+
+
+    let speakButton = document.getElementById('speakButton');
+    let audioContext;
+    let microphoneStream;
+
+    speakButton.addEventListener('click', async function() {
+      if (speakButton.textContent === 'Speak') {
+        speakButton.textContent = 'Speaking';
+        speakButton.classList.add('speaking');
+        startMicrophone();
+      } else {
+        speakButton.textContent = 'Speak';
+        speakButton.classList.remove('speaking');
+        stopMicrophone();
+      }
+    });
+
+    async function startMicrophone() {
+      try {
+        // Request access to the microphone
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        microphoneStream = audioContext.createMediaStreamSource(stream);
+
+        // Connect the microphone input to the output (real-time)
+        microphoneStream.connect(audioContext.destination);
+      } catch (err) {
+        console.error('Error accessing the microphone: ', err);
+      }
+    }
+
+    function stopMicrophone() {
+      if (audioContext && audioContext.state !== 'closed') {
+        // Stop microphone input and close the audio context
+        audioContext.close();
+        audioContext = null;
+      }
+    }
+</script>
+
+
+
+
+</body>
+</html>
